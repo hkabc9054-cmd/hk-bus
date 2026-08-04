@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="巴士LED">
+  <meta name="theme-color" content="#f5f2eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>M-巴士報站牌2.0</title>
+  <link rel="manifest" id="manifest-link">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+TC:wght@400;700&display=swap');
+    :root {
+      --bg: #f5f2eb;
+      --panel: #ffffff;
+      --accent: #3d9be9;
+      --accent-dark: #2b7fc4;
+      --text: #1a3a5c;
+      --muted: #6a8499;
+      --eta: #0a8f5c;
+      --soon: #c99200;
+      --border: #c5dff5;
+      --shadow: rgba(61, 155, 233, 0.18);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', 'Noto Sans TC', monospace;
+      min-height: 100vh; min-height: 100dvh;
+      padding: 12px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    }
+    .header {
+      text-align: center; margin-bottom: 10px;
+      border-bottom: 2px solid var(--accent); padding-bottom: 8px;
+    }
+    .header h1 {
+      font-size: 1.15rem; letter-spacing: 1px; color: var(--accent-dark);
+    }
+    .clock { font-size: 0.85rem; color: var(--muted); margin-top: 4px; }
+    .toolbar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .tool-btn {
+      background: var(--panel); color: var(--accent-dark);
+      border: 1.5px solid var(--accent); border-radius: 8px;
+      padding: 7px 12px; font-family: inherit; font-size: 0.8rem; cursor: pointer;
+    }
+    .tool-btn:active { opacity: 0.75; }
+    .install-bar {
+      display: none; background: #e8f5e9; border: 2px solid #43a047; border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 12px; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .install-bar.show { display: flex; }
+    .install-bar span { font-size: 0.9rem; color: #2e7d32; }
+    .install-btn {
+      background: #43a047; color: #fff; border: none; border-radius: 6px;
+      padding: 8px 16px; font-family: inherit; font-weight: 700; cursor: pointer;
+    }
+    .stop-panel {
+      background: var(--panel); border: 2.5px solid var(--accent); border-radius: 10px;
+      margin-bottom: 14px; box-shadow: 0 4px 14px var(--shadow); overflow: hidden;
+    }
+    .stop-title {
+      background: var(--accent); color: #fff; padding: 10px 12px;
+      font-size: 1.05rem; font-weight: 700;
+      display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    }
+    .stop-meta { font-size: 0.75rem; opacity: 0.95; white-space: nowrap; }
+    .co-badge {
+      display: inline-block; background: rgba(255,255,255,0.25);
+      padding: 1px 6px; border-radius: 4px; margin-left: 4px; font-size: 0.7rem;
+    }
+    .routes { padding: 4px 0; }
+    .route-row {
+      display: grid; grid-template-columns: 68px 1fr 78px; align-items: center;
+      padding: 8px 12px; border-bottom: 1px solid #eef5fb; gap: 6px;
+    }
+    .route-row:last-child { border-bottom: none; }
+    .route-no { font-size: 1.2rem; font-weight: 700; color: var(--accent-dark); }
+    .dest { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .eta-box { text-align: right; font-size: 1.05rem; font-weight: 700; }
+    .eta-min { color: var(--eta); }
+    .eta-soon { color: var(--soon); animation: blink 1s infinite; }
+    .eta-scheduled { color: var(--muted); font-size: 0.8rem; }
+    .rmk { font-size: 0.68rem; color: #e67e22; grid-column: 1 / -1; padding-left: 74px; }
+    .no-data, .error-box { padding: 16px 12px; text-align: center; font-size: 0.85rem; color: var(--muted); }
+    .error-box { color: #c0392b; line-height: 1.45; }
+    .retry-btn, .primary-btn {
+      margin-top: 8px; background: var(--accent); color: #fff; border: none; border-radius: 6px;
+      padding: 8px 16px; font-family: inherit; font-weight: 700; cursor: pointer;
+    }
+    .update-status { text-align: center; font-size: 0.75rem; color: var(--eta); margin-bottom: 10px; }
+    .footer { text-align: center; font-size: 0.68rem; color: var(--muted); margin-top: 8px; line-height: 1.5; }
+
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(26, 58, 92, 0.45);
+      z-index: 100; padding: 12px; overflow-y: auto;
+    }
+    .modal-bg.show { display: block; }
+    .modal {
+      background: var(--panel); border: 2px solid var(--accent); border-radius: 12px;
+      max-width: 520px; margin: 16px auto; padding: 16px;
+    }
+    .modal h2 { font-size: 1.1rem; margin-bottom: 10px; color: var(--accent-dark); }
+    .hint-text { font-size: 0.72rem; color: var(--muted); line-height: 1.4; margin-bottom: 12px; }
+    .search-box {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .search-box input {
+      flex: 1; background: #f8fafc; border: 1.5px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 10px; font-family: inherit; font-size: 0.9rem;
+    }
+    .search-box button {
+      background: var(--accent); color: #fff; border: none; border-radius: 8px;
+      padding: 0 14px; font-family: inherit; font-weight: 700; cursor: pointer;
+    }
+    .search-results {
+      max-height: 180px; overflow-y: auto; margin-bottom: 12px;
+      border: 1px solid var(--border); border-radius: 8px; display: none;
+    }
+    .search-results.show { display: block; }
+    .search-item {
+      padding: 10px 12px; border-bottom: 1px solid #eef5fb; cursor: pointer; font-size: 0.85rem;
+    }
+    .search-item:active, .search-item:hover { background: #eef6fc; }
+    .search-item .sid { color: var(--muted); font-size: 0.72rem; }
+    .stop-edit {
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; margin-bottom: 10px;
+    }
+    .stop-edit label { display: block; font-size: 0.72rem; color: var(--muted); margin-bottom: 3px; }
+    .stop-edit input, .stop-edit select {
+      width: 100%; background: #fff; border: 1.5px solid var(--border); color: var(--text);
+      border-radius: 6px; padding: 8px; font-family: inherit; font-size: 0.88rem; margin-bottom: 8px;
+    }
+    .stop-edit .row { display: flex; gap: 8px; align-items: center; }
+    .del-btn {
+      background: #fdecea; color: #c0392b; border: 1px solid #f5c6cb;
+      border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 0.75rem; cursor: pointer;
+    }
+    .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .modal-actions button { flex: 1; min-width: 90px; }
+    .add-btn {
+      width: 100%; background: #eef8f1; color: #1e7e34; border: 1.5px dashed #7dcea0;
+      border-radius: 8px; padding: 10px; font-family: inherit; cursor: pointer; margin-bottom: 8px;
+    }
+    .search-status { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>M-巴士報站牌</h1>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn" id="settingsBtn">⚙️ 設定／搜尋站</button>
+    <button class="tool-btn" id="refreshBtn">🔄 更新</button>
+  </div>
+
+  <div class="install-bar" id="installBar">
+    <span>📲 安裝到主畫面</span>
+    <button class="install-btn" id="installBtn">安裝</button>
+  </div>
+
+  <div class="update-status" id="status">載入中...</div>
+  <div id="panels"></div>
+
+  <div class="footer">
+    九巴 · 城巴／新巴 · 每 30 秒更新 · 僅供參考<br>
+    <span id="pwaStatus"></span>
+  </div>
+
+  <div class="modal-bg" id="modalBg">
+    <div class="modal">
+      <h2>設定巴士站（最多 4 個）</h2>
+      <div class="hint-text">
+        可搜站名自動填入（支援九巴 + 城巴／新巴）。<br>
+        新巴路線已併入城巴，選「城巴」即可。
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="搜站名，例如 銅鑼灣 / 鳳德商場">
+        <button id="searchBtn">搜尋</button>
+      </div>
+      <div class="search-status" id="searchStatus"></div>
+      <div class="search-results" id="searchResults"></div>
+
+      <div id="editList"></div>
+      <button class="add-btn" id="addStopBtn">＋ 新增巴士站</button>
+      <div class="modal-actions">
+        <button class="primary-btn" id="saveBtn">儲存</button>
+        <button class="tool-btn" id="cancelBtn">取消</button>
+        <button class="tool-btn" id="resetBtn">恢復預設</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_STOPS = [
+      { name: '鳳德商場', code: 'WT408', id: 'A0FDF34B2D278750', co: 'KMB' },
+      { name: '龍蟠苑', code: 'WT133', id: '4B9D547F0F450784', co: 'KMB' }
+    ];
+    const MAX_STOPS = 4;
+    const STORAGE_KEY = 'bus-led-stops-v2';
+    const STOP_CACHE_KEY = 'bus-led-stoplist-v1';
+    const STOP_CACHE_TTL = 24 * 60 * 60 * 1000; // 1 day
+
+    const KMB_ETA = 'https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/';
+    const CTB_ETA = 'https://rt.data.gov.hk/v1/transport/batch/stop-eta/CTB/';
+    const HKBUS_DATA = 'https://data.hkbus.app/routeFareList.min.json';
+    const PROXIES = [
+      u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+      u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`
+    ];
+
+    let stops = loadStops();
+    let editDraft = [];
+    let stopIndex = null; // [{id, name, co, code}]
+    let searchTargetIndex = null; // which edit slot to fill, or null = add
+
+    function loadStops() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const p = JSON.parse(raw);
+          if (Array.isArray(p) && p.length) return p.slice(0, MAX_STOPS);
+        }
+      } catch (e) {}
+      return JSON.parse(JSON.stringify(DEFAULT_STOPS));
+    }
+    function saveStops(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      stops = list;
+    }
+
+    function detectCo(id) {
+      if (!id) return 'KMB';
+      const s = id.trim();
+      if (/^[0-9]{6}$/.test(s)) return 'CTB';
+      if (/^[0-9A-Fa-f]{16}$/.test(s)) return 'KMB';
+      return s.length <= 8 ? 'CTB' : 'KMB';
+    }
+
+    // ===== PWA =====
+    function createIcon(size) {
+      const c = document.createElement('canvas');
+      c.width = c.height = size;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#f5f2eb';
+      ctx.fillRect(0, 0, size, size);
+      ctx.strokeStyle = '#3d9be9';
+      ctx.lineWidth = size * 0.06;
+      ctx.strokeRect(size * 0.08, size * 0.08, size * 0.84, size * 0.84);
+      ctx.fillStyle = '#3d9be9';
+      ctx.font = `bold ${size * 0.42}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('巴', size / 2, size / 2 + size * 0.02);
+      return c.toDataURL('image/png');
+    }
+    function setupManifest() {
+      const m = {
+        name: '巴士LED報站牌', short_name: '巴士LED',
+        description: '自訂九巴／城巴 LED 報站牌',
+        start_url: './', scope: './', display: 'standalone', orientation: 'portrait',
+        background_color: '#f5f2eb', theme_color: '#f5f2eb', lang: 'zh-HK',
+        icons: [
+          { src: createIcon(192), sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: createIcon(512), sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
+        ]
+      };
+      document.getElementById('manifest-link').href = URL.createObjectURL(
+        new Blob([JSON.stringify(m)], { type: 'application/json' })
+      );
+    }
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault(); deferredPrompt = e;
+      document.getElementById('installBar').classList.add('show');
+    });
+    document.getElementById('installBtn').onclick = async () => {
+      if (!deferredPrompt) { alert('請用瀏覽器選單「加入主畫面」'); return; }
+      deferredPrompt.prompt();
+      await deferredPrompt.userChoice;
+      deferredPrompt = null;
+      document.getElementById('installBar').classList.remove('show');
+    };
+    if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+      document.getElementById('pwaStatus').textContent = 'App 模式';
+    }
+    setupManifest();
+
+    // ===== helpers =====
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function updateClock() {
+      const n = new Date();
+      document.getElementById('clock').textContent =
+        [n.getHours(), n.getMinutes(), n.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+    }
+    async function fetchJson(url) {
+      try {
+        const res = await fetch(url, { cache: 'no-store', mode: 'cors' });
+        if (res.ok) return await res.json();
+      } catch (e) {}
+      for (const make of PROXIES) {
+        try {
+          const res = await fetch(make(url), { cache: 'no-store' });
+          if (res.ok) return await res.json();
+        } catch (e) {}
+      }
+      throw new Error('網絡錯誤');
+    }
+
+    // ===== stop search index =====
+    async function ensureStopIndex() {
+      if (stopIndex) return stopIndex;
+      const status = document.getElementById('searchStatus');
+      try {
+        const cached = localStorage.getItem(STOP_CACHE_KEY);
+        if (cached) {
+          const obj = JSON.parse(cached);
+          if (Date.now() - obj.ts < STOP_CACHE_TTL && Array.isArray(obj.list)) {
+            stopIndex = obj.list;
+            status.textContent = `站點資料已載入（${stopIndex.length} 個）`;
+            return stopIndex;
+          }
+        }
+      } catch (e) {}
+
+      status.textContent = '正在下載站點資料（首次約需數秒）...';
+      const data = await fetchJson(HKBUS_DATA);
+      const sl = data.stopList || {};
+      const list = [];
+      for (const [id, info] of Object.entries(sl)) {
+        const nameZh = (info.name && (info.name.zh || info.name.tc)) || '';
+        const nameEn = (info.name && info.name.en) || '';
+        const co = detectCo(id);
+        // extract code like (WT408)
+        const m = (nameZh + nameEn).match(/\(([A-Z]{1,3}\d{2,4})\)/);
+        list.push({
+          id,
+          name: nameZh || nameEn || id,
+          nameEn,
+          co,
+          code: m ? m[1] : ''
+        });
+      }
+      stopIndex = list;
+      try {
+        localStorage.setItem(STOP_CACHE_KEY, JSON.stringify({ ts: Date.now(), list }));
+      } catch (e) { /* quota */ }
+      status.textContent = `站點資料已載入（${list.length} 個）`;
+      return list;
+    }
+
+    function doSearch(q) {
+      if (!q || q.length < 1) return [];
+      const qq = q.trim().toLowerCase();
+      const results = [];
+      for (const s of stopIndex) {
+        const hay = (s.name + ' ' + s.nameEn + ' ' + s.id + ' ' + s.code).toLowerCase();
+        if (hay.includes(qq)) {
+          results.push(s);
+          if (results.length >= 40) break;
+        }
+      }
+      return results;
+    }
+
+    // ===== render panels =====
+    function buildPanels() {
+      document.getElementById('panels').innerHTML = stops.map((s, i) => {
+        const co = s.co || detectCo(s.id);
+        const coLabel = co === 'CTB' ? '城巴' : '九巴';
+        return `
+        <div class="stop-panel">
+          <div class="stop-title">
+            <span>${escapeHtml(s.name || '未命名')}</span>
+            <span class="stop-meta">${escapeHtml(s.code || '')}<span class="co-badge">${coLabel}</span></span>
+          </div>
+          <div class="routes" id="panel-${i}"><div class="no-data">載入中...</div></div>
+        </div>`;
+      }).join('');
+    }
+
+    function formatETA(etaStr) {
+      if (!etaStr) return null;
+      const diff = Math.round((new Date(etaStr) - new Date()) / 60000);
+      if (isNaN(diff)) return null;
+      if (diff <= 0) return { text: '即將到', class: 'eta-soon' };
+      if (diff <= 1) return { text: '1 分鐘', class: 'eta-soon' };
+      return { text: `${diff} 分鐘`, class: 'eta-min' };
+    }
+
+    function normalizeEtaList(raw, co) {
+      // unify KMB / CTB fields
+      return (raw || []).map(item => ({
+        route: item.route,
+        dest: item.dest_tc || item.dest || item.dest_en || '',
+        eta: item.eta || null,
+        rmk: item.rmk_tc || item.rmk || item.rmk_en || '',
+        dir: item.dir,
+        service_type: item.service_type,
+        co: item.co || co
+      }));
+    }
+
+    function renderPanel(idx, data, errMsg) {
+      const el = document.getElementById('panel-' + idx);
+      if (!el) return;
+      if (errMsg) {
+        el.innerHTML = `<div class="error-box">${escapeHtml(errMsg)}<br>
+          <button class="retry-btn" onclick="refresh()">重試</button></div>`;
+        return;
+      }
+      if (!data || !data.length) {
+        el.innerHTML = '<div class="no-data">暫時無班次資料</div>';
+        return;
+      }
+      const grouped = {};
+      data.forEach(item => {
+        if (!item.eta && !item.rmk) return;
+        const key = `${item.route}_${item.dir || ''}_${item.service_type || ''}`;
+        if (!grouped[key]) grouped[key] = { route: item.route, dest: item.dest, etas: [], rmk: item.rmk || '' };
+        if (item.eta) grouped[key].etas.push(item.eta);
+        if (item.rmk && !grouped[key].rmk) grouped[key].rmk = item.rmk;
+      });
+      const routes = Object.values(grouped).sort((a, b) =>
+        String(a.route).localeCompare(String(b.route), undefined, { numeric: true }));
+      if (!routes.length) {
+        el.innerHTML = '<div class="no-data">暫時無班次資料</div>';
+        return;
+      }
+      el.innerHTML = routes.map(r => {
+        const etas = r.etas.map(formatETA).filter(Boolean).slice(0, 2);
+        const etaHtml = etas.length
+          ? etas.map(e => `<div class="${e.class}">${e.text}</div>`).join('')
+          : (r.rmk ? `<div class="eta-scheduled">${escapeHtml(r.rmk.substring(0, 14))}</div>` : '<div class="eta-scheduled">—</div>');
+        return `<div class="route-row">
+          <div class="route-no">${escapeHtml(r.route)}</div>
+          <div class="dest">${escapeHtml(r.dest)}</div>
+          <div class="eta-box">${etaHtml}</div>
+          ${r.rmk && etas.length ? `<div class="rmk">${escapeHtml(r.rmk)}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+
+    async function fetchStopEta(stop) {
+      const co = stop.co || detectCo(stop.id);
+      const id = stop.id.trim();
+      if (co === 'CTB') {
+        const json = await fetchJson(CTB_ETA + id);
+        return normalizeEtaList(json.data, 'CTB');
+      }
+      const json = await fetchJson(KMB_ETA + id);
+      return normalizeEtaList(json.data, 'KMB');
+    }
+
+    async function refresh() {
+      const status = document.getElementById('status');
+      status.textContent = '更新中...';
+      status.style.color = 'var(--eta)';
+      buildPanels();
+      const results = await Promise.allSettled(stops.map(s => {
+        if (!s.id) return Promise.reject(new Error('未設定 Stop ID'));
+        return fetchStopEta(s);
+      }));
+      let hasError = false;
+      results.forEach((r, i) => {
+        if (r.status === 'fulfilled') renderPanel(i, r.value);
+        else {
+          hasError = true;
+          renderPanel(i, null, r.reason?.message || '載入失敗');
+        }
+      });
+      const t = new Date().toLocaleTimeString('zh-HK', { hour12: false });
+      status.textContent = hasError ? `部分失敗 · ${t}` : `上次更新：${t}`;
+      status.style.color = hasError ? 'var(--soon)' : 'var(--eta)';
+    }
+
+    // ===== settings =====
+    function openSettings() {
+      editDraft = JSON.parse(JSON.stringify(stops));
+      renderEditList();
+      document.getElementById('searchResults').classList.remove('show');
+      document.getElementById('searchInput').value = '';
+      document.getElementById('modalBg').classList.add('show');
+      ensureStopIndex().catch(e => {
+        document.getElementById('searchStatus').textContent = '站點資料載入失敗，仍可手動輸入 ID';
+      });
+    }
+    function closeSettings() {
+      document.getElementById('modalBg').classList.remove('show');
+    }
+    function renderEditList() {
+      const list = document.getElementById('editList');
+      list.innerHTML = editDraft.map((s, i) => `
+        <div class="stop-edit">
+          <label>站名</label>
+          <input type="text" data-i="${i}" data-f="name" value="${escapeHtml(s.name || '')}">
+          <label>代號（可選）</label>
+          <input type="text" data-i="${i}" data-f="code" value="${escapeHtml(s.code || '')}">
+          <label>公司</label>
+          <select data-i="${i}" data-f="co">
+            <option value="KMB" ${(s.co || detectCo(s.id)) === 'KMB' ? 'selected' : ''}>九巴 / 龍運</option>
+            <option value="CTB" ${(s.co || detectCo(s.id)) === 'CTB' ? 'selected' : ''}>城巴 / 新巴</option>
+          </select>
+          <label>Stop ID</label>
+          <div class="row">
+            <input type="text" data-i="${i}" data-f="id" value="${escapeHtml(s.id || '')}" style="flex:1">
+            <button class="del-btn" data-del="${i}">刪</button>
+          </div>
+          <button class="tool-btn" type="button" data-fill="${i}" style="width:100%;margin-top:4px">從此列用搜尋填入</button>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('input', () => {
+          const i = +el.dataset.i, f = el.dataset.f;
+          editDraft[i][f] = el.value.trim();
+          if (f === 'id') editDraft[i].co = detectCo(el.value);
+        });
+        el.addEventListener('change', () => {
+          const i = +el.dataset.i, f = el.dataset.f;
+          editDraft[i][f] = el.value.trim();
+        });
+      });
+      list.querySelectorAll('[data-del]').forEach(btn => {
+        btn.onclick = () => {
+          if (editDraft.length <= 1) { alert('至少保留 1 個站'); return; }
+          editDraft.splice(+btn.dataset.del, 1);
+          renderEditList();
+        };
+      });
+      list.querySelectorAll('[data-fill]').forEach(btn => {
+        btn.onclick = () => {
+          searchTargetIndex = +btn.dataset.fill;
+          document.getElementById('searchInput').focus();
+          document.getElementById('searchStatus').textContent = `搜尋結果會填入第 ${searchTargetIndex + 1} 個站`;
+        };
+      });
+      document.getElementById('addStopBtn').style.display = editDraft.length >= MAX_STOPS ? 'none' : 'block';
+    }
+
+    async function runSearch() {
+      const q = document.getElementById('searchInput').value.trim();
+      const box = document.getElementById('searchResults');
+      const status = document.getElementById('searchStatus');
+      if (!q) { box.classList.remove('show'); return; }
+      try {
+        await ensureStopIndex();
+      } catch (e) {
+        status.textContent = '無法載入站點清單';
+        return;
+      }
+      const results = doSearch(q);
+      if (!results.length) {
+        box.innerHTML = '<div class="search-item">搵唔到</div>';
+        box.classList.add('show');
+        return;
+      }
+      box.innerHTML = results.map((s, idx) => `
+        <div class="search-item" data-r="${idx}">
+          <strong>${escapeHtml(s.name)}</strong>
+          <span class="co-badge" style="background:#e3f2fd;color:#1565c0">${s.co === 'CTB' ? '城巴' : '九巴'}</span>
+          <div class="sid">${escapeHtml(s.code || '')} · ${escapeHtml(s.id)}</div>
+        </div>
+      `).join('');
+      box.classList.add('show');
+      box.querySelectorAll('[data-r]').forEach(el => {
+        el.onclick = () => {
+          const s = results[+el.dataset.r];
+          const target = searchTargetIndex != null ? searchTargetIndex
+            : (editDraft.length < MAX_STOPS ? editDraft.length : editDraft.length - 1);
+          if (target >= editDraft.length) {
+            editDraft.push({ name: '', code: '', id: '', co: 'KMB' });
+          }
+          editDraft[target] = {
+            name: s.name,
+            code: s.code || '',
+            id: s.id,
+            co: s.co
+          };
+          searchTargetIndex = null;
+          renderEditList();
+          box.classList.remove('show');
+          status.textContent = `已填入：${s.name}`;
+        };
+      });
+    }
+
+    document.getElementById('settingsBtn').onclick = openSettings;
+    document.getElementById('refreshBtn').onclick = refresh;
+    document.getElementById('cancelBtn').onclick = closeSettings;
+    document.getElementById('modalBg').addEventListener('click', e => {
+      if (e.target.id === 'modalBg') closeSettings();
+    });
+    document.getElementById('searchBtn').onclick = runSearch;
+    document.getElementById('searchInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') runSearch();
+    });
+    document.getElementById('addStopBtn').onclick = () => {
+      if (editDraft.length >= MAX_STOPS) return;
+      editDraft.push({ name: '', code: '', id: '', co: 'KMB' });
+      searchTargetIndex = editDraft.length - 1;
+      renderEditList();
+      document.getElementById('searchInput').focus();
+    };
+    document.getElementById('saveBtn').onclick = () => {
+      for (let i = 0; i < editDraft.length; i++) {
+        const s = editDraft[i];
+        if (!s.id) { alert(`第 ${i + 1} 個站未填 Stop ID`); return; }
+        s.co = s.co || detectCo(s.id);
+        if (!s.name) s.name = s.code || s.id;
+      }
+      saveStops(editDraft);
+      closeSettings();
+      refresh();
+    };
+    document.getElementById('resetBtn').onclick = () => {
+      if (!confirm('恢復預設（鳳德商場、龍蟠苑）？')) return;
+      editDraft = JSON.parse(JSON.stringify(DEFAULT_STOPS));
+      renderEditList();
+    };
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    refresh();
+    setInterval(refresh, 30000);
+  </script>
+</body>
+</html>
