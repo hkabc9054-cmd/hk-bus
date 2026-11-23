@@ -77,258 +77,203 @@ input[type=search],input[type=text]{width:100%;font-size:16px;padding:11px 12px;
 label{font-size:13px;font-weight:700;display:block;margin:12px 0 4px}
 .install{display:none;background:var(--cream-2);border:2px solid var(--main);border-radius:14px;padding:10px 12px;
   margin-bottom:14px;font-size:14px}
+
+.tools{display:flex;gap:8px;margin-bottom:12px}
+.tools .btn{flex:1;padding:10px}
+.cobadge{background:rgba(255,255,255,.28);padding:1px 7px;border-radius:6px;font-size:11px;margin-left:6px}
+.stopedit{background:#fff;border:1px solid var(--cream-2);border-radius:12px;padding:12px;margin-bottom:10px}
+.stopedit label{margin:8px 0 3px;font-size:12px;color:var(--muted)}
+.stopedit select{width:100%;font-size:16px;padding:10px;border:2px solid var(--main);border-radius:12px;background:#fff;color:var(--ink);font-family:inherit}
+.rowx{display:flex;gap:8px}
+.del{background:#fdecea;color:#a4311d;border:1px solid #f5c6cb;border-radius:10px;padding:0 12px;font-family:inherit}
+.sitem{padding:10px 12px;background:#fff;border:1px solid var(--cream-2);border-radius:12px;margin-bottom:8px}
+.sitem:active{background:var(--cream-2)}
+.sitem small{display:block;color:var(--muted);font-size:11px}
+.actions{display:flex;gap:8px;margin-top:12px}
+.actions .btn{flex:1;padding:11px}
+.sbox{display:flex;gap:8px}
+.sbox input{flex:1}
 </style>
 </head>
 <body>
 <header>
-  <div class="hrow">
-    <h1>🚌 巴士到站</h1>
-    <button class="btn" id="refreshBtn" type="button">重新整理</button>
-  </div>
+  <div class="hrow"><h1>🚌 巴士到站</h1></div>
   <div class="status"><span class="dot" id="dot"></span><span id="statusText">載入中…</span></div>
 </header>
 <main>
+  <div class="tools">
+    <button class="btn" id="settingsBtn" type="button">⚙️ 設定／搜尋站</button>
+    <button class="btn" id="refreshBtn" type="button">🔄 更新</button>
+  </div>
   <div class="install" id="installBox">
     <span id="installMsg"></span>
     <button class="btn primary" id="installBtn" type="button" style="display:none;margin-left:8px">安裝</button>
   </div>
   <div id="list"></div>
-  <button class="add" id="addBtn" type="button">＋ 新增巴士站（<span id="countTxt"></span>）</button>
 </main>
 
 <dialog id="dlg">
-  <div class="dhead"><b>新增巴士站</b><button class="x" id="dlgClose" type="button">✕</button></div>
+  <div class="dhead"><b>設定巴士站（最多 6 個）</b><button class="x" id="dlgClose" type="button">✕</button></div>
   <div class="dbody">
-    <input type="search" id="q" placeholder="輸入站名，例如：鑽石山站" autocomplete="off">
-    <div style="margin-top:10px"><button class="btn" id="nearBtn" type="button">📍 搜尋附近巴士站</button></div>
-    <div class="hint" id="searchHint">首次搜尋需下載九巴站表（約數百 KB），之後會儲存在手機。</div>
-    <ul class="res" id="res"></ul>
-    <label for="ctbManual">城巴／新巴站號（選填，可在加入後再編輯）</label>
-    <input type="text" id="ctbManual" placeholder="例如 001469，多個用逗號分隔" inputmode="numeric">
+    <div class="hint">可搜站名自動填入（支援九巴＋城巴／新巴）。新巴路線已併入城巴，公司選「城巴／新巴」即可。</div>
+    <div class="sbox"><input type="search" id="q" placeholder="搜站名，例如 銅鑼灣 / 鳳德商場"><button class="btn primary" id="searchBtn" type="button">搜尋</button></div>
+    <div class="hint" id="searchStatus"></div>
+    <div id="results"></div>
+    <div id="editList"></div>
+    <button class="add" id="addStopBtn" type="button" style="padding:11px;margin-top:4px">＋ 新增巴士站</button>
+    <div class="actions">
+      <button class="btn primary" id="saveBtn" type="button">儲存</button>
+      <button class="btn" id="cancelBtn" type="button">取消</button>
+      <button class="btn" id="resetBtn" type="button">恢復預設</button>
+    </div>
   </div>
 </dialog>
 
 <script>
 "use strict";
-const KMB = "https://data.etabus.gov.hk/v1/transport/kmb";
-const CTB_V2 = "https://rt.data.gov.hk/v2/transport/citybus";
-const CTB_BATCH = "https://rt.data.gov.hk/v1/transport/batch";
-const MAX_STOPS = 6, REFRESH_MS = 30000, LS_STOPS = "bus.stops.v2", LS_KMBLIST = "bus.kmbstops.v1", LS_CTBMAP = "bus.ctbmap.v1";
-
-const DEFAULTS = [
-  { id:"A0FDF34B2D278750", name_tc:"鳳德商場", name_en:"FUNG TAK SHOPPING CENTRE", lat:22.343311, lng:114.199551, ctb:[] },
-  { id:"4B9D547F0F450784", name_tc:"龍蟠苑",   name_en:"LUNG POON COURT",          lat:22.342920, lng:114.200382, ctb:[] }
+const KMB_ETA = "https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/";
+const CTB_ETA = "https://rt.data.gov.hk/v1/transport/batch/stop-eta/CTB/";
+const HKBUS_DATA = ["https://data.hkbus.app/routeFareList.min.json","https://hkbus.github.io/hk-bus-crawling/routeFareList.min.json"];
+const PROXIES = [u=>`https://corsproxy.io/?${encodeURIComponent(u)}`, u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`];
+const MAX_STOPS = 6, REFRESH_MS = 30000;
+const KEY_STOPS = "bus-stops-v3", KEY_INDEX = "bus-stoplist-v1", INDEX_TTL = 864e5;
+const DEFAULT_STOPS = [
+  { name:"鳳德商場", code:"WT408", id:"A0FDF34B2D278750", co:"KMB" },
+  { name:"龍蟠苑",   code:"WT133", id:"4B9D547F0F450784", co:"KMB" }
 ];
-const CTB_SEED_ROUTES = ["671","A23","N23"]; // 已知經過鑽石山一帶的城巴／新巴路線
-
 const $ = s => document.querySelector(s);
-const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
-const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
-
-let stops = lsGet(LS_STOPS, null) || DEFAULTS.map(s => ({...s}));
-let ctbMap = lsGet(LS_CTBMAP, {}); // kmbStopId -> {ids:[...], at: ts}
-let timer = null, refreshing = false;
-
-const save = () => lsSet(LS_STOPS, stops);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rd = k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
+const wr = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+const detectCo = id => { const s=(id||"").trim(); if(!s) return "KMB"; if(/^[0-9]{6}$/.test(s)) return "CTB"; if(/^[0-9A-Fa-f]{16}$/.test(s)) return "KMB"; return s.length<=8?"CTB":"KMB"; };
 
-async function getJson(url, ms = 12000) {
-  const ac = new AbortController(), t = setTimeout(() => ac.abort(), ms);
-  try { const r = await fetch(url, { signal: ac.signal }); if (!r.ok) throw new Error(r.status); return await r.json(); }
-  finally { clearTimeout(t); }
-}
+let stops = (() => { const p = rd(KEY_STOPS); return Array.isArray(p) && p.length ? p.slice(0,MAX_STOPS) : JSON.parse(JSON.stringify(DEFAULT_STOPS)); })();
+let draft = [], stopIndex = null, target = null, busy = false;
 
-function hav(a, b, c, d) {
-  const R = 6371000, r = x => x * Math.PI / 180, dl = r(c - a), dg = r(d - b);
-  const h = Math.sin(dl/2)**2 + Math.cos(r(a)) * Math.cos(r(c)) * Math.sin(dg/2)**2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
-/* ---------- 城巴／新巴：以座標配對站 ---------- */
-async function discoverCtb(stop, extraRoutes = []) {
-  const cached = ctbMap[stop.id];
-  if (cached && Date.now() - cached.at < 7 * 864e5) return cached.ids;
-  const routes = [...new Set([...CTB_SEED_ROUTES, ...extraRoutes])];
-  const found = new Set();
-  await Promise.all(routes.flatMap(rt => ["inbound","outbound"].map(async dir => {
-    try {
-      const rs = await getJson(`${CTB_V2}/route-stop/CTB/${rt}/${dir}`);
-      for (const it of (rs.data || [])) {
-        try {
-          const sd = await getJson(`${CTB_V2}/stop/${it.stop}`);
-          const s = sd.data; if (!s) continue;
-          if (hav(stop.lat, stop.lng, +s.lat, +s.long) <= 150) found.add(it.stop);
-        } catch {}
-      }
-    } catch {}
-  })));
-  const ids = [...found];
-  ctbMap[stop.id] = { ids, at: Date.now() };
-  lsSet(LS_CTBMAP, ctbMap);
-  return ids;
+async function getJson(url, ms=12000) {
+  const go = async u => { const ac=new AbortController(), t=setTimeout(()=>ac.abort(),ms);
+    try { const r = await fetch(u,{signal:ac.signal,cache:"no-store"}); if(!r.ok) throw 0; return await r.json(); } finally { clearTimeout(t); } };
+  try { return await go(url); } catch {}
+  for (const p of PROXIES) { try { return await go(p(url)); } catch {} }
+  throw new Error("網絡錯誤");
 }
 
-/* ---------- 取得到站資料 ---------- */
-async function kmbEta(id) {
-  const j = await getJson(`${KMB}/stop-eta/${id}`);
-  return (j.data || []).map(e => ({ co:"KMB", route:e.route, dir:e.dir, st:e.service_type, dest:e.dest_tc, eta:e.eta, rmk:e.rmk_tc }));
+/* ---- 到站 ---- */
+async function fetchEta(s) {
+  const co = s.co || detectCo(s.id), id = s.id.trim();
+  const j = await getJson(co==="CTB" ? `${CTB_ETA}${id}?lang=zh-hant` : KMB_ETA + id);
+  return (j.data||[]).map(e => ({ route:e.route, dest:e.dest_tc||e.dest||e.dest_en||"", eta:e.eta||null,
+    rmk:e.rmk_tc||e.rmk||e.rmk_en||"", dir:e.dir, st:e.service_type, co:(e.co==="NWFB"?"NWFB":co) }));
 }
-async function ctbEta(id) {
-  const j = await getJson(`${CTB_BATCH}/stop-eta/CTB/${id}?lang=zh-hant`);
-  return (j.data || []).map(e => ({ co:(e.co === "NWFB" ? "NWFB" : "CTB"), route:e.route, dir:e.dir, st:"", dest:e.dest, eta:e.eta, rmk:e.rmk }));
-}
-async function allEta(stop) {
-  const jobs = [kmbEta(stop.id)];
-  let ctbIds = [...(stop.ctb || [])];
-  try { ctbIds = [...new Set([...ctbIds, ...await discoverCtb(stop)])]; } catch {}
-  ctbIds.forEach(id => jobs.push(ctbEta(id)));
-  const rs = await Promise.allSettled(jobs);
-  const items = rs.filter(r => r.status === "fulfilled").flatMap(r => r.value);
-  if (!items.length && rs.every(r => r.status === "rejected")) throw new Error("fetch");
-  return items;
-}
-
-function group(items) {
-  const m = new Map();
-  for (const e of items) {
-    const k = [e.co, e.route, e.dir, e.st, e.dest].join("|");
-    if (!m.has(k)) m.set(k, { ...e, etas: [] });
-    if (e.eta) m.get(k).etas.push(e.eta);
-  }
-  const arr = [...m.values()];
-  arr.forEach(g => g.etas.sort());
-  const num = r => parseInt(r.replace(/\D/g, "") || "9999", 10);
-  return arr.sort((a, b) => num(a.route) - num(b.route) || a.route.localeCompare(b.route));
-}
-const mins = iso => Math.round((new Date(iso) - Date.now()) / 60000);
-const opTag = co => co === "KMB" ? "九巴" : co === "NWFB" ? "新巴" : "城巴";
-
-function renderRows(items) {
-  const g = group(items);
-  if (!g.length) return `<div class="empty">暫時沒有班次資料</div>`;
-  return g.map(r => {
-    const ms = r.etas.slice(0, 3).map(mins).filter(m => m > -2);
-    let first = `<b>—</b>`, rest = "";
-    if (ms.length) {
-      const m0 = Math.max(ms[0], 0);
-      first = m0 <= 1 ? `<b class="soon">即將到達</b>` : `<b>${m0}<span style="font-size:12px"> 分鐘</span></b>`;
-      if (ms.length > 1) rest = `<small>其後 ${ms.slice(1).map(x => Math.max(x,0) + "′").join("、")}</small>`;
-    } else rest = `<small>${esc(r.rmk || "沒有班次")}</small>`;
-    return `<div class="row"><span class="badge ${r.co === "KMB" ? "" : "ctb"}">${esc(r.route)}</span>
-      <div class="dest">往 ${esc(r.dest)}<small>${opTag(r.co)}${r.rmk && ms.length ? "・" + esc(r.rmk) : ""}</small></div>
+const mins = iso => Math.round((new Date(iso)-Date.now())/60000);
+const coName = c => c==="KMB"?"九巴":c==="NWFB"?"新巴":"城巴";
+function rows(data) {
+  const g = {};
+  data.forEach(e => { if(!e.eta && !e.rmk) return; const k=[e.route,e.dir,e.st,e.dest].join("|");
+    (g[k] ||= {...e, etas:[]}); if(e.eta) g[k].etas.push(e.eta); });
+  const arr = Object.values(g).sort((a,b)=>String(a.route).localeCompare(String(b.route),undefined,{numeric:true}));
+  if(!arr.length) return `<div class="empty">暫時沒有班次資料</div>`;
+  return arr.map(r => {
+    r.etas.sort(); const ms = r.etas.slice(0,3).map(mins).filter(m=>m>-2);
+    let first="<b>—</b>", rest="";
+    if(ms.length){ const m0=Math.max(ms[0],0);
+      first = m0<=1 ? `<b class="soon">即將到達</b>` : `<b>${m0}<span style="font-size:12px"> 分鐘</span></b>`;
+      if(ms.length>1) rest=`<small>其後 ${ms.slice(1).map(x=>Math.max(x,0)+"′").join("、")}</small>`;
+    } else rest=`<small>${esc((r.rmk||"沒有班次").slice(0,14))}</small>`;
+    return `<div class="row"><span class="badge ${r.co==="KMB"?"":"ctb"}">${esc(r.route)}</span>
+      <div class="dest">往 ${esc(r.dest)}<small>${coName(r.co)}${r.rmk&&ms.length?"・"+esc(r.rmk):""}</small></div>
       <div class="eta">${first}${rest}</div></div>`;
   }).join("");
 }
-
-/* ---------- 畫面 ---------- */
-function renderShell() {
-  $("#countTxt").textContent = `${stops.length}/${MAX_STOPS}`;
-  $("#addBtn").style.display = stops.length >= MAX_STOPS ? "none" : "";
-  $("#list").innerHTML = stops.map((s, i) => `
-    <section class="card" data-id="${s.id}">
-      <div class="chead"><span class="no">${i + 1}</span>
-        <div class="nm"><b>${esc(s.name_tc)}</b><small>${esc(s.name_en || "")}</small></div>
-        <button class="x" data-del="${s.id}" aria-label="移除">✕</button></div>
-      <div class="body"><div class="empty">載入中…</div></div>
-    </section>`).join("");
+function shell() {
+  $("#list").innerHTML = stops.map((s,i)=>`<section class="card"><div class="chead"><span class="no">${i+1}</span>
+    <div class="nm"><b>${esc(s.name||"未命名")}<span class="cobadge">${coName(s.co||detectCo(s.id))}</span></b><small>${esc(s.code||"")}</small></div></div>
+    <div id="p${i}"><div class="empty">載入中…</div></div></section>`).join("");
+}
+async function refresh() {
+  if(busy) return; busy=true; shell();
+  $("#dot").classList.add("live"); $("#statusText").textContent="更新中…";
+  const rs = await Promise.allSettled(stops.map(s => s.id ? fetchEta(s) : Promise.reject()));
+  rs.forEach((r,i)=>{ const el=$("#p"+i); if(!el) return;
+    el.innerHTML = r.status==="fulfilled" ? rows(r.value) : `<div class="err">未能取得到站資料，請稍後再試。</div>`; });
+  const t=new Date(), p=n=>String(n).padStart(2,"0");
+  $("#statusText").textContent = `已更新 ${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}・每 30 秒自動更新`;
+  $("#dot").classList.remove("live"); busy=false;
 }
 
-async function refreshOne(s) {
-  const el = document.querySelector(`.card[data-id="${s.id}"] .body`);
-  if (!el) return;
-  try { el.innerHTML = renderRows(await allEta(s)); }
-  catch { el.innerHTML = `<div class="err">未能連線取得到站資料，請稍後再試。</div>`; }
+/* ---- 站點搜尋（hkbus 合併資料：九巴＋城巴／新巴） ---- */
+async function ensureIndex() {
+  if(stopIndex) return stopIndex;
+  const c = rd(KEY_INDEX);
+  if(c && Array.isArray(c.list) && Date.now()-c.ts < INDEX_TTL) { stopIndex=c.list; return stopIndex; }
+  $("#searchStatus").textContent = "正在下載站點資料（首次約需數秒）…";
+  let data=null;
+  for (const u of HKBUS_DATA) { try { data = await getJson(u, 40000); break; } catch {} }
+  if(!data) throw new Error("fail");
+  const list = Object.entries(data.stopList||{}).map(([id,info])=>{
+    const zh=(info.name&&(info.name.zh||info.name.tc))||"", en=(info.name&&info.name.en)||"";
+    const m=(zh+en).match(/\(([A-Z]{1,3}\d{2,4})\)/);
+    return { id, name:zh||en||id, en, co:detectCo(id), code:m?m[1]:"" };
+  });
+  stopIndex = list; wr(KEY_INDEX,{ts:Date.now(),list});
+  $("#searchStatus").textContent = `站點資料已載入（${list.length} 個）`;
+  return list;
 }
-async function refreshAll() {
-  if (refreshing) return; refreshing = true;
-  $("#dot").classList.add("live"); $("#statusText").textContent = "更新中…";
-  await Promise.all(stops.map(refreshOne));
-  const t = new Date();
-  $("#statusText").textContent = `已更新 ${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}:${String(t.getSeconds()).padStart(2,"0")}・每 30 秒自動更新`;
-  $("#dot").classList.remove("live"); refreshing = false;
+async function runSearch() {
+  const q=$("#q").value.trim().toLowerCase(), box=$("#results"), st=$("#searchStatus");
+  if(!q){ box.innerHTML=""; return; }
+  try { await ensureIndex(); } catch { st.textContent="無法載入站點清單，仍可手動輸入 Stop ID"; return; }
+  const res=[]; for(const s of stopIndex){ if((s.name+" "+s.en+" "+s.id+" "+s.code).toLowerCase().includes(q)){ res.push(s); if(res.length>=40) break; } }
+  box.innerHTML = res.length ? res.map((s,i)=>`<div class="sitem" data-r="${i}"><b>${esc(s.name)}</b>
+    <span class="cobadge" style="background:var(--cream-2);color:var(--main-dark)">${coName(s.co)}</span>
+    <small>${esc(s.code)} · ${esc(s.id)}</small></div>`).join("") : `<div class="sitem">找不到相符的巴士站</div>`;
+  box.querySelectorAll("[data-r]").forEach(el=>el.onclick=()=>{
+    const s=res[+el.dataset.r];
+    let t = target!=null ? target : (draft.length<MAX_STOPS ? draft.length : draft.length-1);
+    if(t>=draft.length) draft.push({});
+    draft[t] = { name:s.name, code:s.code||"", id:s.id, co:s.co };
+    target=null; renderEdit(); box.innerHTML=""; st.textContent=`已填入：${s.name}`;
+  });
 }
 
-$("#refreshBtn").onclick = refreshAll;
-$("#list").addEventListener("click", e => {
-  const id = e.target.closest("[data-del]")?.dataset.del;
-  if (!id) return;
-  const s = stops.find(x => x.id === id);
-  if (s && confirm(`移除「${s.name_tc}」？`)) { stops = stops.filter(x => x.id !== id); save(); renderShell(); refreshAll(); }
-});
-document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshAll(); });
-
-/* ---------- 新增巴士站 ---------- */
-const dlg = $("#dlg");
-let kmbList = null;
-async function loadKmbList() {
-  if (kmbList) return kmbList;
-  kmbList = lsGet(LS_KMBLIST, null);
-  if (kmbList && kmbList.length) return kmbList;
-  $("#searchHint").textContent = "下載站表中…";
-  const j = await getJson(`${KMB}/stop`, 40000);
-  kmbList = (j.data || []).map(s => ({ id:s.stop, n:s.name_tc, e:s.name_en, a:+s.lat, o:+s.long }));
-  lsSet(LS_KMBLIST, kmbList);
-  $("#searchHint").textContent = "";
-  return kmbList;
+/* ---- 設定 ---- */
+const dlg=$("#dlg");
+function renderEdit() {
+  $("#editList").innerHTML = draft.map((s,i)=>{ const co=s.co||detectCo(s.id); return `<div class="stopedit">
+    <label>站名</label><input type="text" data-i="${i}" data-f="name" value="${esc(s.name||"")}">
+    <label>代號（可選）</label><input type="text" data-i="${i}" data-f="code" value="${esc(s.code||"")}">
+    <label>公司</label><select data-i="${i}" data-f="co"><option value="KMB" ${co==="KMB"?"selected":""}>九巴 / 龍運</option><option value="CTB" ${co==="CTB"?"selected":""}>城巴 / 新巴</option></select>
+    <label>Stop ID</label><div class="rowx"><input type="text" data-i="${i}" data-f="id" value="${esc(s.id||"")}" style="flex:1"><button class="del" data-del="${i}" type="button">刪</button></div>
+    <button class="btn" data-fill="${i}" type="button" style="width:100%;margin-top:8px">用搜尋結果填入此站</button></div>`; }).join("");
+  $("#editList").querySelectorAll("input,select").forEach(el=>el.addEventListener("input",()=>{
+    const i=+el.dataset.i,f=el.dataset.f; draft[i][f]=el.value.trim(); if(f==="id"){ draft[i].co=detectCo(el.value); } }));
+  $("#editList").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if(draft.length<=1){alert("至少保留 1 個站");return;} draft.splice(+b.dataset.del,1); renderEdit(); });
+  $("#editList").querySelectorAll("[data-fill]").forEach(b=>b.onclick=()=>{ target=+b.dataset.fill; $("#q").focus(); $("#searchStatus").textContent=`搜尋結果會填入第 ${target+1} 個站`; });
+  $("#addStopBtn").style.display = draft.length>=MAX_STOPS ? "none" : "";
 }
-function showResults(list) {
-  $("#res").innerHTML = list.slice(0, 30).map(s => `
-    <li><span>${esc(s.n)}<small>${esc(s.e)}${s.d != null ? "・約 " + Math.round(s.d) + " 米" : ""}</small></span>
-    <button class="btn primary" data-add="${s.id}" type="button">加入</button></li>`).join("") ||
-    `<li><span>找不到相符的巴士站</span></li>`;
-}
-$("#addBtn").onclick = () => { $("#res").innerHTML = ""; $("#q").value = ""; $("#ctbManual").value = ""; dlg.showModal(); };
-$("#dlgClose").onclick = () => dlg.close();
-$("#q").addEventListener("input", async e => {
-  const q = e.target.value.trim();
-  if (!q) { $("#res").innerHTML = ""; return; }
-  try { const L = await loadKmbList(); showResults(L.filter(s => s.n.includes(q) || s.e.toLowerCase().includes(q.toLowerCase()))); }
-  catch { $("#searchHint").textContent = "下載站表失敗，請檢查網絡。"; }
-});
-$("#nearBtn").onclick = () => {
-  if (!navigator.geolocation) { $("#searchHint").textContent = "此裝置不支援定位。"; return; }
-  $("#searchHint").textContent = "定位中…";
-  navigator.geolocation.getCurrentPosition(async p => {
-    try {
-      const L = await loadKmbList();
-      const near = L.map(s => ({ ...s, d: hav(p.coords.latitude, p.coords.longitude, s.a, s.o) })).sort((a, b) => a.d - b.d).slice(0, 20);
-      $("#searchHint").textContent = ""; showResults(near);
-    } catch { $("#searchHint").textContent = "下載站表失敗，請檢查網絡。"; }
-  }, () => { $("#searchHint").textContent = "未能取得位置，請允許定位或改用站名搜尋。"; }, { enableHighAccuracy:true, timeout:10000 });
+$("#settingsBtn").onclick=()=>{ draft=JSON.parse(JSON.stringify(stops)); target=null; $("#q").value=""; $("#results").innerHTML=""; $("#searchStatus").textContent=""; renderEdit(); dlg.showModal(); ensureIndex().catch(()=>{ $("#searchStatus").textContent="站點資料載入失敗，仍可手動輸入 Stop ID"; }); };
+$("#dlgClose").onclick=$("#cancelBtn").onclick=()=>dlg.close();
+$("#searchBtn").onclick=runSearch;
+$("#q").addEventListener("keydown",e=>{ if(e.key==="Enter") runSearch(); });
+$("#addStopBtn").onclick=()=>{ if(draft.length>=MAX_STOPS) return; draft.push({name:"",code:"",id:"",co:"KMB"}); target=draft.length-1; renderEdit(); $("#q").focus(); };
+$("#saveBtn").onclick=()=>{
+  for(let i=0;i<draft.length;i++){ const s=draft[i]; if(!s.id){ alert(`第 ${i+1} 個站未填 Stop ID`); return; } s.co=s.co||detectCo(s.id); if(!s.name) s.name=s.code||s.id; }
+  if(!wr(KEY_STOPS,draft.slice(0,MAX_STOPS))){ alert("儲存失敗：此裝置未能使用本機儲存空間"); return; }
+  stops=JSON.parse(JSON.stringify(draft)).slice(0,MAX_STOPS); dlg.close(); refresh();
 };
-$("#res").addEventListener("click", async e => {
-  const id = e.target.closest("[data-add]")?.dataset.add; if (!id) return;
-  if (stops.length >= MAX_STOPS) { alert("最多只能儲存 6 個巴士站"); return; }
-  if (stops.some(s => s.id === id)) { alert("此站已加入"); return; }
-  const s = kmbList.find(x => x.id === id);
-  const ctb = $("#ctbManual").value.split(/[,，\s]+/).map(x => x.trim()).filter(Boolean);
-  const stop = { id:s.id, name_tc:s.n, name_en:s.e, lat:s.a, lng:s.o, ctb };
-  stops.push(stop); save(); dlg.close(); renderShell();
-  // 同一站九巴路線號碼，也拿來嘗試配對聯營（城巴／新巴）路線
-  try {
-    const kmbRoutes = [...new Set((await kmbEta(stop.id)).map(x => x.route))];
-    discoverCtb(stop, kmbRoutes).then(() => refreshOne(stop)).catch(() => {});
-  } catch {}
-  refreshAll();
-});
+$("#resetBtn").onclick=()=>{ if(!confirm("恢復預設（鳳德商場、龍蟠苑）？")) return; draft=JSON.parse(JSON.stringify(DEFAULT_STOPS)); renderEdit(); };
+$("#refreshBtn").onclick=refresh;
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(); });
 
-/* ---------- 安裝提示 & Service Worker ---------- */
+/* ---- 安裝 & SW ---- */
 const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
-let deferred = null;
-window.addEventListener("beforeinstallprompt", e => {
-  e.preventDefault(); deferred = e;
-  $("#installBox").style.display = "block"; $("#installMsg").textContent = "可安裝成手機 App：";
-  $("#installBtn").style.display = "";
-});
-$("#installBtn").onclick = async () => { if (deferred) { deferred.prompt(); deferred = null; $("#installBox").style.display = "none"; } };
-if (!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent)) {
-  $("#installBox").style.display = "block";
-  $("#installMsg").textContent = "安裝：按 Safari 底部「分享」→「加至主畫面」。";
-}
-if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+let deferred=null;
+addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("#installBox").style.display="block"; $("#installMsg").textContent="可安裝成手機 App："; $("#installBtn").style.display=""; });
+$("#installBtn").onclick=async()=>{ if(deferred){ deferred.prompt(); deferred=null; $("#installBox").style.display="none"; } };
+if(!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent)){ $("#installBox").style.display="block"; $("#installMsg").textContent="安裝：按 Safari 底部「分享」→「加至主畫面」。"; }
+if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
 
-renderShell(); refreshAll();
-timer = setInterval(() => { if (!document.hidden) refreshAll(); }, REFRESH_MS);
+refresh(); setInterval(()=>{ if(!document.hidden) refresh(); }, REFRESH_MS);
 </script>
 </body>
 </html>
