@@ -78,21 +78,40 @@ label{font-size:13px;font-weight:700;display:block;margin:12px 0 4px}
 .install{display:none;background:var(--cream-2);border:2px solid var(--main);border-radius:14px;padding:10px 12px;
   margin-bottom:14px;font-size:14px}
 
+
 .tools{display:flex;gap:8px;margin-bottom:12px}
 .tools .btn{flex:1;padding:10px}
-.cobadge{background:rgba(255,255,255,.28);padding:1px 7px;border-radius:6px;font-size:11px;margin-left:6px}
-.stopedit{background:#fff;border:1px solid var(--cream-2);border-radius:12px;padding:12px;margin-bottom:10px}
-.stopedit label{margin:8px 0 3px;font-size:12px;color:var(--muted)}
-.stopedit select{width:100%;font-size:16px;padding:10px;border:2px solid var(--main);border-radius:12px;background:#fff;color:var(--ink);font-family:inherit}
-.rowx{display:flex;gap:8px}
-.del{background:#fdecea;color:#a4311d;border:1px solid #f5c6cb;border-radius:10px;padding:0 12px;font-family:inherit}
-.sitem{padding:10px 12px;background:#fff;border:1px solid var(--cream-2);border-radius:12px;margin-bottom:8px}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:6px;margin-right:4px;color:#fff;background:var(--kmb)}
+.tag.ctb{background:var(--ctb)}
+.chead .tag{background:rgba(255,255,255,.3)}
+.row.none .badge{opacity:.45}
+.row.none .eta b{color:var(--muted);font-size:14px;font-weight:600}
+.sheet{padding:0}
+.screen{display:none}
+.screen.on{display:block}
+.mine{list-style:none;margin:0 0 12px;padding:0}
+.mine li{display:flex;align-items:center;gap:8px;background:#fff;border:2px solid var(--main);border-radius:14px;padding:10px;margin-bottom:8px}
+.mine .no{background:var(--main);color:#fff;font-weight:800;border-radius:8px;min-width:26px;height:26px;display:grid;place-items:center;font-size:14px}
+.mine .mn{flex:1;min-width:0}
+.mine .mn b{display:block;font-size:16px}
+.mine .mn small{color:var(--muted);font-size:11px}
+.ib{border:0;background:var(--cream-2);color:var(--main-dark);border-radius:10px;width:36px;height:36px;font-size:16px;font-family:inherit}
+.ib.del{background:#fdecea;color:#a4311d}
+.ib:disabled{opacity:.3}
+.big{width:100%;padding:14px;font-size:16px;border:0;border-radius:14px;background:var(--main-dark);color:var(--cream);font-weight:700;font-family:inherit}
+.big:disabled{opacity:.4}
+.link{background:none;border:0;color:var(--main-dark);text-decoration:underline;font-size:13px;font-family:inherit;padding:8px 0}
+.back{background:none;border:0;color:#fff;font-size:15px;font-family:inherit;padding:0 10px 0 0}
+.sitem{display:flex;align-items:center;gap:10px;padding:11px 12px;background:#fff;border:1px solid var(--cream-2);border-radius:12px;margin-bottom:8px;width:100%;text-align:left;font-family:inherit;color:var(--ink);font-size:16px}
 .sitem:active{background:var(--cream-2)}
-.sitem small{display:block;color:var(--muted);font-size:11px}
-.actions{display:flex;gap:8px;margin-top:12px}
-.actions .btn{flex:1;padding:11px}
-.sbox{display:flex;gap:8px}
-.sbox input{flex:1}
+.sitem .t{flex:1;min-width:0}
+.sitem small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.sitem .plus{color:var(--main-dark);font-size:22px;font-weight:700}
+details{margin-top:14px;border-top:1px dashed var(--main);padding-top:10px}
+summary{font-size:13px;color:var(--main-dark);font-weight:700}
+.adv label{margin:10px 0 4px}
+.adv select{width:100%;font-size:16px;padding:10px;border:2px solid var(--main);border-radius:12px;background:#fff;color:var(--ink);font-family:inherit}
+.msg{font-size:13px;color:var(--muted);margin:8px 0}
 </style>
 </head>
 <body>
@@ -102,7 +121,7 @@ label{font-size:13px;font-weight:700;display:block;margin:12px 0 4px}
 </header>
 <main>
   <div class="tools">
-    <button class="btn" id="settingsBtn" type="button">⚙️ 設定／搜尋站</button>
+    <button class="btn" id="settingsBtn" type="button">⚙️ 管理巴士站</button>
     <button class="btn" id="refreshBtn" type="button">🔄 更新</button>
   </div>
   <div class="install" id="installBox">
@@ -113,167 +132,235 @@ label{font-size:13px;font-weight:700;display:block;margin:12px 0 4px}
 </main>
 
 <dialog id="dlg">
-  <div class="dhead"><b>設定巴士站（最多 6 個）</b><button class="x" id="dlgClose" type="button">✕</button></div>
-  <div class="dbody">
-    <div class="hint">可搜站名自動填入（支援九巴＋城巴／新巴）。新巴路線已併入城巴，公司選「城巴／新巴」即可。</div>
-    <div class="sbox"><input type="search" id="q" placeholder="搜站名，例如 銅鑼灣 / 鳳德商場"><button class="btn primary" id="searchBtn" type="button">搜尋</button></div>
-    <div class="hint" id="searchStatus"></div>
-    <div id="results"></div>
-    <div id="editList"></div>
-    <button class="add" id="addStopBtn" type="button" style="padding:11px;margin-top:4px">＋ 新增巴士站</button>
-    <div class="actions">
-      <button class="btn primary" id="saveBtn" type="button">儲存</button>
-      <button class="btn" id="cancelBtn" type="button">取消</button>
-      <button class="btn" id="resetBtn" type="button">恢復預設</button>
+  <!-- 畫面 A：我的巴士站 -->
+  <div class="screen on" id="scrA">
+    <div class="dhead"><b id="titleA">我的巴士站</b><button class="x" id="closeA" type="button" aria-label="關閉">✕</button></div>
+    <div class="dbody">
+      <ul class="mine" id="mine"></ul>
+      <button class="big" id="goAdd" type="button">＋ 新增巴士站</button>
+      <div style="text-align:center"><button class="link" id="resetBtn" type="button">恢復預設（鳳德商場、龍蟠苑）</button></div>
+      <div class="msg">改動會自動儲存。</div>
+    </div>
+  </div>
+  <!-- 畫面 B：搜尋新增 -->
+  <div class="screen" id="scrB">
+    <div class="dhead"><button class="back" id="backB" type="button">‹ 返回</button><b>搜尋巴士站</b></div>
+    <div class="dbody">
+      <input type="search" id="q" placeholder="輸入站名，例如：鳳德商場" autocomplete="off">
+      <div class="msg" id="sMsg"></div>
+      <div id="results"></div>
+      <details class="adv">
+        <summary>搵唔到？自行輸入 Stop ID</summary>
+        <label for="mName">站名</label><input type="text" id="mName" placeholder="例如：鳳德商場">
+        <label for="mCo">公司</label><select id="mCo"><option value="KMB">九巴 / 龍運</option><option value="CTB">城巴 / 新巴</option></select>
+        <label for="mId">Stop ID</label><input type="text" id="mId" placeholder="九巴 16 位英數／城巴 6 位數字">
+        <div style="margin-top:10px"><button class="big" id="mAdd" type="button">加入</button></div>
+      </details>
     </div>
   </div>
 </dialog>
 
 <script>
 "use strict";
-const KMB_ETA = "https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/";
-const CTB_ETA = "https://rt.data.gov.hk/v1/transport/batch/stop-eta/CTB/";
-const HKBUS_DATA = ["https://data.hkbus.app/routeFareList.min.json","https://hkbus.github.io/hk-bus-crawling/routeFareList.min.json"];
-const PROXIES = [u=>`https://corsproxy.io/?${encodeURIComponent(u)}`, u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`];
-const MAX_STOPS = 6, REFRESH_MS = 30000;
-const KEY_STOPS = "bus-stops-v3", KEY_INDEX = "bus-stoplist-v1", INDEX_TTL = 864e5;
-const DEFAULT_STOPS = [
-  { name:"鳳德商場", code:"WT408", id:"A0FDF34B2D278750", co:"KMB" },
-  { name:"龍蟠苑",   code:"WT133", id:"4B9D547F0F450784", co:"KMB" }
+const KMB_ETA="https://data.etabus.gov.hk/v1/transport/kmb/stop-eta/";
+const CTB_ETA="https://rt.data.gov.hk/v1/transport/batch/stop-eta/CTB/";
+const HKBUS_DATA=["https://data.hkbus.app/routeFareList.min.json","https://hkbus.github.io/hk-bus-crawling/routeFareList.min.json"];
+const PROXIES=[u=>`https://corsproxy.io/?${encodeURIComponent(u)}`,u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`];
+const MAX=6,REFRESH_MS=30000,KEY="bus-stops-v4",KEY_IDX="bus-stoplist-v2",TTL=864e5;
+// 每個站：kmb = 九巴站 ID，ctb = 城巴／新巴站 ID（可多個）
+const DEFAULTS=[
+  {name:"鳳德商場",code:"WT408",kmb:"A0FDF34B2D278750",ctb:[],lat:22.343311,lng:114.199551},
+  {name:"龍蟠苑",code:"WT133",kmb:"4B9D547F0F450784",ctb:[],lat:22.342920,lng:114.200382}
 ];
-const $ = s => document.querySelector(s);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const rd = k => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch { return null; } };
-const wr = (k,v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
-const detectCo = id => { const s=(id||"").trim(); if(!s) return "KMB"; if(/^[0-9]{6}$/.test(s)) return "CTB"; if(/^[0-9A-Fa-f]{16}$/.test(s)) return "KMB"; return s.length<=8?"CTB":"KMB"; };
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const rd=k=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):null}catch{return null}};
+const wr=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));return true}catch{return false}};
+const detectCo=id=>/^[0-9]{6}$/.test((id||"").trim())?"CTB":"KMB";
+const hav=(a,b,c,d)=>{const r=x=>x*Math.PI/180,h=Math.sin(r(c-a)/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2;return 12742000*Math.asin(Math.sqrt(h))};
 
-let stops = (() => { const p = rd(KEY_STOPS); return Array.isArray(p) && p.length ? p.slice(0,MAX_STOPS) : JSON.parse(JSON.stringify(DEFAULT_STOPS)); })();
-let draft = [], stopIndex = null, target = null, busy = false;
+let stops=(()=>{const p=rd(KEY);return Array.isArray(p)&&p.length?p.slice(0,MAX):JSON.parse(JSON.stringify(DEFAULTS))})();
+const save=()=>wr(KEY,stops);
+let busy=false,index=null;
 
-async function getJson(url, ms=12000) {
-  const go = async u => { const ac=new AbortController(), t=setTimeout(()=>ac.abort(),ms);
-    try { const r = await fetch(u,{signal:ac.signal,cache:"no-store"}); if(!r.ok) throw 0; return await r.json(); } finally { clearTimeout(t); } };
-  try { return await go(url); } catch {}
-  for (const p of PROXIES) { try { return await go(p(url)); } catch {} }
-  throw new Error("網絡錯誤");
+async function getJson(url,ms=12000){
+  const go=async u=>{const ac=new AbortController(),t=setTimeout(()=>ac.abort(),ms);
+    try{const r=await fetch(u,{signal:ac.signal,cache:"no-store"});if(!r.ok)throw 0;return await r.json()}finally{clearTimeout(t)}};
+  try{return await go(url)}catch{}
+  for(const p of PROXIES){try{return await go(p(url))}catch{}}
+  throw new Error("net");
 }
 
-/* ---- 到站 ---- */
-async function fetchEta(s) {
-  const co = s.co || detectCo(s.id), id = s.id.trim();
-  const j = await getJson(co==="CTB" ? `${CTB_ETA}${id}?lang=zh-hant` : KMB_ETA + id);
-  return (j.data||[]).map(e => ({ route:e.route, dest:e.dest_tc||e.dest||e.dest_en||"", eta:e.eta||null,
-    rmk:e.rmk_tc||e.rmk||e.rmk_en||"", dir:e.dir, st:e.service_type, co:(e.co==="NWFB"?"NWFB":co) }));
+/* ===== 到站：九巴＋城巴／新巴，沒有班次的路線也會列出 ===== */
+async function kmbEta(id){
+  const j=await getJson(KMB_ETA+id);
+  return (j.data||[]).map(e=>({co:"KMB",route:e.route,dir:e.dir,st:e.service_type,dest:e.dest_tc,eta:e.eta,rmk:e.rmk_tc}));
 }
-const mins = iso => Math.round((new Date(iso)-Date.now())/60000);
-const coName = c => c==="KMB"?"九巴":c==="NWFB"?"新巴":"城巴";
-function rows(data) {
-  const g = {};
-  data.forEach(e => { if(!e.eta && !e.rmk) return; const k=[e.route,e.dir,e.st,e.dest].join("|");
-    (g[k] ||= {...e, etas:[]}); if(e.eta) g[k].etas.push(e.eta); });
-  const arr = Object.values(g).sort((a,b)=>String(a.route).localeCompare(String(b.route),undefined,{numeric:true}));
-  if(!arr.length) return `<div class="empty">暫時沒有班次資料</div>`;
-  return arr.map(r => {
-    r.etas.sort(); const ms = r.etas.slice(0,3).map(mins).filter(m=>m>-2);
-    let first="<b>—</b>", rest="";
-    if(ms.length){ const m0=Math.max(ms[0],0);
-      first = m0<=1 ? `<b class="soon">即將到達</b>` : `<b>${m0}<span style="font-size:12px"> 分鐘</span></b>`;
-      if(ms.length>1) rest=`<small>其後 ${ms.slice(1).map(x=>Math.max(x,0)+"′").join("、")}</small>`;
-    } else rest=`<small>${esc((r.rmk||"沒有班次").slice(0,14))}</small>`;
-    return `<div class="row"><span class="badge ${r.co==="KMB"?"":"ctb"}">${esc(r.route)}</span>
+async function ctbEta(id){
+  const j=await getJson(`${CTB_ETA}${id}?lang=zh-hant`);
+  return (j.data||[]).map(e=>({co:e.co==="NWFB"?"NWFB":"CTB",route:e.route,dir:e.dir,st:"",dest:e.dest||e.dest_tc||"",eta:e.eta,rmk:e.rmk||e.rmk_tc||""}));
+}
+async function stopEta(s){
+  const jobs=[];if(s.kmb)jobs.push(kmbEta(s.kmb));(s.ctb||[]).forEach(i=>jobs.push(ctbEta(i)));
+  const rs=await Promise.allSettled(jobs);
+  if(rs.length&&rs.every(r=>r.status==="rejected"))throw new Error("net");
+  return rs.filter(r=>r.status==="fulfilled").flatMap(r=>r.value);
+}
+const mins=iso=>Math.round((new Date(iso)-Date.now())/60000);
+const coName=c=>c==="KMB"?"九巴":c==="NWFB"?"新巴":"城巴";
+function rowsHtml(items){
+  const g=new Map();
+  for(const e of items){const k=[e.co,e.route,e.dir,e.st,e.dest].join("|");
+    if(!g.has(k))g.set(k,{...e,etas:[]});if(e.eta)g.get(k).etas.push(e.eta)}
+  const arr=[...g.values()].sort((a,b)=>String(a.route).localeCompare(String(b.route),undefined,{numeric:true}));
+  if(!arr.length)return `<div class="empty">暫時沒有班次資料</div>`;
+  return arr.map(r=>{
+    r.etas.sort();const ms=r.etas.slice(0,3).map(mins).filter(m=>m>-2);
+    let first,rest="",cls="";
+    if(ms.length){const m0=Math.max(ms[0],0);
+      first=m0<=1?`<b class="soon">即將到達</b>`:`<b>${m0}<span style="font-size:12px"> 分鐘</span></b>`;
+      if(ms.length>1)rest=`<small>其後 ${ms.slice(1).map(x=>Math.max(x,0)+"′").join("、")}</small>`;
+    }else{cls=" none";first=`<b>暫無班次</b>`;rest=r.rmk?`<small>${esc(String(r.rmk).slice(0,16))}</small>`:""}
+    return `<div class="row${cls}"><span class="badge ${r.co==="KMB"?"":"ctb"}">${esc(r.route)}</span>
       <div class="dest">往 ${esc(r.dest)}<small>${coName(r.co)}${r.rmk&&ms.length?"・"+esc(r.rmk):""}</small></div>
       <div class="eta">${first}${rest}</div></div>`;
   }).join("");
 }
-function shell() {
-  $("#list").innerHTML = stops.map((s,i)=>`<section class="card"><div class="chead"><span class="no">${i+1}</span>
-    <div class="nm"><b>${esc(s.name||"未命名")}<span class="cobadge">${coName(s.co||detectCo(s.id))}</span></b><small>${esc(s.code||"")}</small></div></div>
+const tagsHtml=s=>(s.kmb?`<span class="tag">九巴</span>`:"")+((s.ctb||[]).length?`<span class="tag ctb">城巴／新巴</span>`:"");
+function shell(){
+  $("#list").innerHTML=stops.map((s,i)=>`<section class="card"><div class="chead"><span class="no">${i+1}</span>
+    <div class="nm"><b>${esc(s.name)}</b><small>${tagsHtml(s)} ${esc(s.code||"")}</small></div></div>
     <div id="p${i}"><div class="empty">載入中…</div></div></section>`).join("");
 }
-async function refresh() {
-  if(busy) return; busy=true; shell();
-  $("#dot").classList.add("live"); $("#statusText").textContent="更新中…";
-  const rs = await Promise.allSettled(stops.map(s => s.id ? fetchEta(s) : Promise.reject()));
-  rs.forEach((r,i)=>{ const el=$("#p"+i); if(!el) return;
-    el.innerHTML = r.status==="fulfilled" ? rows(r.value) : `<div class="err">未能取得到站資料，請稍後再試。</div>`; });
-  const t=new Date(), p=n=>String(n).padStart(2,"0");
-  $("#statusText").textContent = `已更新 ${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}・每 30 秒自動更新`;
-  $("#dot").classList.remove("live"); busy=false;
+async function refresh(){
+  if(busy)return;busy=true;shell();
+  $("#dot").classList.add("live");$("#statusText").textContent="更新中…";
+  const rs=await Promise.allSettled(stops.map(stopEta));
+  rs.forEach((r,i)=>{const el=$("#p"+i);if(!el)return;
+    el.innerHTML=r.status==="fulfilled"?rowsHtml(r.value):`<div class="err">未能取得到站資料，請稍後再試。</div>`});
+  const t=new Date(),p=n=>String(n).padStart(2,"0");
+  $("#statusText").textContent=`已更新 ${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}・每 30 秒自動更新`;
+  $("#dot").classList.remove("live");busy=false;
 }
 
-/* ---- 站點搜尋（hkbus 合併資料：九巴＋城巴／新巴） ---- */
-async function ensureIndex() {
-  if(stopIndex) return stopIndex;
-  const c = rd(KEY_INDEX);
-  if(c && Array.isArray(c.list) && Date.now()-c.ts < INDEX_TTL) { stopIndex=c.list; return stopIndex; }
-  $("#searchStatus").textContent = "正在下載站點資料（首次約需數秒）…";
-  let data=null;
-  for (const u of HKBUS_DATA) { try { data = await getJson(u, 40000); break; } catch {} }
-  if(!data) throw new Error("fail");
-  const list = Object.entries(data.stopList||{}).map(([id,info])=>{
-    const zh=(info.name&&(info.name.zh||info.name.tc))||"", en=(info.name&&info.name.en)||"";
+/* ===== 站點資料（九巴＋城巴／新巴）===== */
+async function loadIndex(){
+  if(index)return index;
+  const c=rd(KEY_IDX);
+  if(c&&Array.isArray(c.l)&&Date.now()-c.ts<TTL){index=c.l;return index}
+  let data=null;for(const u of HKBUS_DATA){try{data=await getJson(u,40000);break}catch{}}
+  if(!data)throw new Error("idx");
+  index=Object.entries(data.stopList||{}).map(([id,i])=>{
+    const zh=(i.name&&(i.name.zh||i.name.tc))||"",en=(i.name&&i.name.en)||"";
     const m=(zh+en).match(/\(([A-Z]{1,3}\d{2,4})\)/);
-    return { id, name:zh||en||id, en, co:detectCo(id), code:m?m[1]:"" };
+    const loc=i.location||{};
+    return [id,zh||en||id,en,m?m[1]:"",+loc.lat||0,+loc.lng||0];
   });
-  stopIndex = list; wr(KEY_INDEX,{ts:Date.now(),list});
-  $("#searchStatus").textContent = `站點資料已載入（${list.length} 個）`;
-  return list;
+  wr(KEY_IDX,{ts:Date.now(),l:index});
+  return index;
 }
-async function runSearch() {
-  const q=$("#q").value.trim().toLowerCase(), box=$("#results"), st=$("#searchStatus");
-  if(!q){ box.innerHTML=""; return; }
-  try { await ensureIndex(); } catch { st.textContent="無法載入站點清單，仍可手動輸入 Stop ID"; return; }
-  const res=[]; for(const s of stopIndex){ if((s.name+" "+s.en+" "+s.id+" "+s.code).toLowerCase().includes(q)){ res.push(s); if(res.length>=40) break; } }
-  box.innerHTML = res.length ? res.map((s,i)=>`<div class="sitem" data-r="${i}"><b>${esc(s.name)}</b>
-    <span class="cobadge" style="background:var(--cream-2);color:var(--main-dark)">${coName(s.co)}</span>
-    <small>${esc(s.code)} · ${esc(s.id)}</small></div>`).join("") : `<div class="sitem">找不到相符的巴士站</div>`;
-  box.querySelectorAll("[data-r]").forEach(el=>el.onclick=()=>{
-    const s=res[+el.dataset.r];
-    let t = target!=null ? target : (draft.length<MAX_STOPS ? draft.length : draft.length-1);
-    if(t>=draft.length) draft.push({});
-    draft[t] = { name:s.name, code:s.code||"", id:s.id, co:s.co };
-    target=null; renderEdit(); box.innerHTML=""; st.textContent=`已填入：${s.name}`;
-  });
+// 為一個站配對另一間公司、同名而且 120 米內的站
+function matchOther(base){ // base = {name,lat,lng,kmb?} ，回傳 {kmb,ctb[]}
+  const out={kmb:base.kmb||"",ctb:[...(base.ctb||[])]};
+  if(!index||!base.lat)return out;
+  for(const r of index){
+    if(r[4]===0)continue;
+    if(r[1]!==base.name)continue;
+    if(hav(base.lat,base.lng,r[4],r[5])>120)continue;
+    if(detectCo(r[0])==="CTB"){if(!out.ctb.includes(r[0]))out.ctb.push(r[0])}
+    else if(!out.kmb)out.kmb=r[0];
+  }
+  return out;
 }
 
-/* ---- 設定 ---- */
+/* ===== 管理畫面 ===== */
 const dlg=$("#dlg");
-function renderEdit() {
-  $("#editList").innerHTML = draft.map((s,i)=>{ const co=s.co||detectCo(s.id); return `<div class="stopedit">
-    <label>站名</label><input type="text" data-i="${i}" data-f="name" value="${esc(s.name||"")}">
-    <label>代號（可選）</label><input type="text" data-i="${i}" data-f="code" value="${esc(s.code||"")}">
-    <label>公司</label><select data-i="${i}" data-f="co"><option value="KMB" ${co==="KMB"?"selected":""}>九巴 / 龍運</option><option value="CTB" ${co==="CTB"?"selected":""}>城巴 / 新巴</option></select>
-    <label>Stop ID</label><div class="rowx"><input type="text" data-i="${i}" data-f="id" value="${esc(s.id||"")}" style="flex:1"><button class="del" data-del="${i}" type="button">刪</button></div>
-    <button class="btn" data-fill="${i}" type="button" style="width:100%;margin-top:8px">用搜尋結果填入此站</button></div>`; }).join("");
-  $("#editList").querySelectorAll("input,select").forEach(el=>el.addEventListener("input",()=>{
-    const i=+el.dataset.i,f=el.dataset.f; draft[i][f]=el.value.trim(); if(f==="id"){ draft[i].co=detectCo(el.value); } }));
-  $("#editList").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{ if(draft.length<=1){alert("至少保留 1 個站");return;} draft.splice(+b.dataset.del,1); renderEdit(); });
-  $("#editList").querySelectorAll("[data-fill]").forEach(b=>b.onclick=()=>{ target=+b.dataset.fill; $("#q").focus(); $("#searchStatus").textContent=`搜尋結果會填入第 ${target+1} 個站`; });
-  $("#addStopBtn").style.display = draft.length>=MAX_STOPS ? "none" : "";
+function show(id){document.querySelectorAll(".screen").forEach(e=>e.classList.toggle("on",e.id===id))}
+function renderMine(){
+  $("#titleA").textContent=`我的巴士站（${stops.length}/${MAX}）`;
+  $("#goAdd").disabled=stops.length>=MAX;
+  $("#goAdd").textContent=stops.length>=MAX?"已達上限 6 個":"＋ 新增巴士站";
+  $("#mine").innerHTML=stops.map((s,i)=>`<li><span class="no">${i+1}</span>
+    <div class="mn"><b>${esc(s.name)}</b><small>${tagsHtml(s)}${!(s.ctb||[]).length?`<button class="link" data-match="${i}" type="button" style="padding:0;font-size:11px">配對城巴／新巴</button>`:""}</small></div>
+    <button class="ib" data-up="${i}" ${i===0?"disabled":""} aria-label="上移">↑</button>
+    <button class="ib" data-down="${i}" ${i===stops.length-1?"disabled":""} aria-label="下移">↓</button>
+    <button class="ib del" data-del="${i}" aria-label="刪除">🗑</button></li>`).join("");
 }
-$("#settingsBtn").onclick=()=>{ draft=JSON.parse(JSON.stringify(stops)); target=null; $("#q").value=""; $("#results").innerHTML=""; $("#searchStatus").textContent=""; renderEdit(); dlg.showModal(); ensureIndex().catch(()=>{ $("#searchStatus").textContent="站點資料載入失敗，仍可手動輸入 Stop ID"; }); };
-$("#dlgClose").onclick=$("#cancelBtn").onclick=()=>dlg.close();
-$("#searchBtn").onclick=runSearch;
-$("#q").addEventListener("keydown",e=>{ if(e.key==="Enter") runSearch(); });
-$("#addStopBtn").onclick=()=>{ if(draft.length>=MAX_STOPS) return; draft.push({name:"",code:"",id:"",co:"KMB"}); target=draft.length-1; renderEdit(); $("#q").focus(); };
-$("#saveBtn").onclick=()=>{
-  for(let i=0;i<draft.length;i++){ const s=draft[i]; if(!s.id){ alert(`第 ${i+1} 個站未填 Stop ID`); return; } s.co=s.co||detectCo(s.id); if(!s.name) s.name=s.code||s.id; }
-  if(!wr(KEY_STOPS,draft.slice(0,MAX_STOPS))){ alert("儲存失敗：此裝置未能使用本機儲存空間"); return; }
-  stops=JSON.parse(JSON.stringify(draft)).slice(0,MAX_STOPS); dlg.close(); refresh();
+$("#mine").addEventListener("click",async e=>{
+  const b=e.target.closest("button");if(!b)return;
+  const d=b.dataset;
+  if(d.up!=null){const i=+d.up;[stops[i-1],stops[i]]=[stops[i],stops[i-1]]}
+  else if(d.down!=null){const i=+d.down;[stops[i+1],stops[i]]=[stops[i],stops[i+1]]}
+  else if(d.del!=null){const s=stops[+d.del];if(stops.length<=1){alert("至少保留 1 個站");return}
+    if(!confirm(`刪除「${s.name}」？`))return;stops.splice(+d.del,1)}
+  else if(d.match!=null){
+    b.textContent="配對中…";
+    try{await loadIndex();const s=stops[+d.match];const m=matchOther(s);s.ctb=m.ctb;if(!m.ctb.length)alert("附近找不到城巴／新巴站（這個站可能沒有城巴／新巴路線）")}
+    catch{alert("下載站點資料失敗，請檢查網絡")}
+  }else return;
+  save();renderMine();
+});
+$("#settingsBtn").onclick=()=>{renderMine();show("scrA");dlg.showModal()};
+dlg.addEventListener("close",()=>{refresh()});
+$("#closeA").onclick=()=>dlg.close();
+$("#resetBtn").onclick=()=>{if(!confirm("恢復預設？目前的設定會被取代。"))return;stops=JSON.parse(JSON.stringify(DEFAULTS));save();renderMine()};
+$("#goAdd").onclick=()=>{show("scrB");$("#q").value="";$("#results").innerHTML="";$("#sMsg").textContent="";$("#q").focus();
+  $("#sMsg").textContent="下載站點資料中…";loadIndex().then(()=>{$("#sMsg").textContent="輸入站名即可搜尋"}).catch(()=>{$("#sMsg").textContent="站點資料下載失敗，請檢查網絡，或在下方自行輸入 Stop ID。"})};
+$("#backB").onclick=()=>{renderMine();show("scrA")};
+
+let tmr=null;
+$("#q").addEventListener("input",()=>{clearTimeout(tmr);tmr=setTimeout(search,200)});
+async function search(){
+  const q=$("#q").value.trim().toLowerCase(),box=$("#results");
+  if(!q){box.innerHTML="";return}
+  if(!index){try{await loadIndex()}catch{return}}
+  // 同名、相近的九巴／城巴站合併成一項（避免重覆）
+  const hits=[];
+  for(const r of index){
+    if((r[1]+" "+r[2]+" "+r[3]).toLowerCase().includes(q)){hits.push(r);if(hits.length>=120)break}
+  }
+  const items=[];const used=new Set();
+  for(const r of hits){
+    if(used.has(r[0]))continue;
+    const base={name:r[1],code:r[3],lat:r[4],lng:r[5]};
+    if(detectCo(r[0])==="KMB")base.kmb=r[0];else base.ctb=[r[0]];
+    const m=matchOther(base);
+    [m.kmb,...m.ctb].filter(Boolean).forEach(i=>used.add(i));
+    items.push({name:r[1],en:r[2],code:r[3]||"",lat:r[4],lng:r[5],kmb:m.kmb||"",ctb:m.ctb});
+    if(items.length>=25)break;
+  }
+  box.innerHTML=items.length?items.map((s,i)=>`<button class="sitem" data-add="${i}" type="button"><div class="t"><b>${esc(s.name)}</b>
+    <small>${tagsHtml(s)} ${esc(s.code)} ${esc(s.en)}</small></div><span class="plus">＋</span></button>`).join(""):`<div class="msg">找不到相符的巴士站</div>`;
+  box._items=items;
+}
+$("#results").addEventListener("click",e=>{
+  const b=e.target.closest("[data-add]");if(!b)return;
+  const s=$("#results")._items[+b.dataset.add];
+  addStop({name:s.name,code:s.code,kmb:s.kmb,ctb:s.ctb,lat:s.lat,lng:s.lng});
+});
+$("#mAdd").onclick=()=>{
+  const id=$("#mId").value.trim(),name=$("#mName").value.trim();
+  if(!id){alert("請輸入 Stop ID");return}
+  const co=$("#mCo").value;
+  addStop({name:name||id,code:"",kmb:co==="KMB"?id:"",ctb:co==="CTB"?[id]:[]});
+  $("#mId").value="";$("#mName").value="";
 };
-$("#resetBtn").onclick=()=>{ if(!confirm("恢復預設（鳳德商場、龍蟠苑）？")) return; draft=JSON.parse(JSON.stringify(DEFAULT_STOPS)); renderEdit(); };
+function addStop(s){
+  if(stops.length>=MAX){alert("最多只能儲存 6 個巴士站");return}
+  if(stops.some(x=>(s.kmb&&x.kmb===s.kmb)||(s.ctb||[]).some(c=>(x.ctb||[]).includes(c)))){alert("這個站已經加入了");return}
+  stops.push({...s,ctb:s.ctb||[]});save();renderMine();show("scrA");
+}
+
+/* ===== 安裝 & Service Worker ===== */
 $("#refreshBtn").onclick=refresh;
-document.addEventListener("visibilitychange",()=>{ if(!document.hidden) refresh(); });
-
-/* ---- 安裝 & SW ---- */
-const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh()});
+const standalone=matchMedia("(display-mode: standalone)").matches||navigator.standalone;
 let deferred=null;
-addEventListener("beforeinstallprompt",e=>{ e.preventDefault(); deferred=e; $("#installBox").style.display="block"; $("#installMsg").textContent="可安裝成手機 App："; $("#installBtn").style.display=""; });
-$("#installBtn").onclick=async()=>{ if(deferred){ deferred.prompt(); deferred=null; $("#installBox").style.display="none"; } };
-if(!standalone && /iphone|ipad|ipod/i.test(navigator.userAgent)){ $("#installBox").style.display="block"; $("#installMsg").textContent="安裝：按 Safari 底部「分享」→「加至主畫面」。"; }
-if("serviceWorker" in navigator) addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
-
-refresh(); setInterval(()=>{ if(!document.hidden) refresh(); }, REFRESH_MS);
+addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;$("#installBox").style.display="block";$("#installMsg").textContent="可安裝成手機 App：";$("#installBtn").style.display=""});
+$("#installBtn").onclick=async()=>{if(deferred){deferred.prompt();deferred=null;$("#installBox").style.display="none"}};
+if(!standalone&&/iphone|ipad|ipod/i.test(navigator.userAgent)){$("#installBox").style.display="block";$("#installMsg").textContent="安裝：按 Safari 底部「分享」→「加至主畫面」。"}
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+refresh();setInterval(()=>{if(!document.hidden)refresh()},REFRESH_MS);
 </script>
 </body>
 </html>
